@@ -1,0 +1,353 @@
+---
+title: "Analysis of Beer Reviews(9/28/2001 - 1/27/2014)"
+author: "Lance J. Fernando, Rachel Kim, Ien Whang and Aren Dakessian"
+date: "2/16/2017"
+output: html_document
+---
+This in-class case study was conducted in BSDS100: Introduction to Data Science at the University of San Francisco
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+***
+###1)
+There are **89** different beers in the study.
+```{r}
+load("/Users/lancefernando/Desktop/USFSpring2017/BSDS100/CaseStudy/Beers/beer.data.Rdata")
+
+#Converting Name into a factor to compare levels
+beer.data$Name <- as.factor(beer.data$Name)
+
+#Computing the number of different beers based on Name
+length(unique(beer.data$Name))
+
+```
+
+
+***
+###2)
+First and last date of reviews. **"2001-09-28" --- "2014-01-27"**
+```{r}
+#Computing the max and minimum dates
+max(beer.data$Date)
+min(beer.data$Date)
+```
+
+
+***
+###3)
+There are **86** different beers from California
+```{r}
+
+#Creating subset for beers from CA
+calBeers <- beer.data[beer.data$Origin == "California", ]
+
+#Calculating length of unique levels in CA beers by name
+length(unique(as.factor(calBeers$Name)))
+```
+
+
+***
+###4)
+Highest rated beer **5**, lowest rated beer **1**
+```{r}
+
+#Computing the range of beer ratings
+cat("Highest rated beer: ", max(beer.data$Rating, na.rm = TRUE))
+cat("Lowest rated beer: ", min(beer.data$Rating, na.rm = TRUE))
+```
+
+
+
+***
+###5)
+####Alcohol content
+
+
+a)Highest alcohol type: *American Strong Ale*
+```{r, eval = FALSE}
+beer.data$Style[which.max(beer.data$ABV)]
+```
+
+
+
+b)Highest alcohol beer: *Samuel Adams Utopias*
+```{r, eval = FALSE}
+beer.data$Name[which.max(beer.data$ABV)]
+```
+
+
+
+c)Lowest alcohol type: *Fruit / Vegetable Beer*
+```{r, eval = FALSE}
+beer.data$Style[which.min(beer.data$ABV)]
+```
+
+
+
+d)Lowest alcohol beer: *Wisconsin Belgian Red*
+```{r, eval = FALSE}
+beer.data$Name[which.min(beer.data$ABV)]
+```
+
+
+
+***
+###6)
+Based on the findings, higher ABV does not necessarily equate higher ratings as their calculated mean differences in ratings are just .01.
+```{r}
+#Making subsets of ABV less than and greater than 5%
+lowerABV <- beer.data[beer.data$ABV < 5,]
+higherABV <- beer.data[beer.data$ABV > 5,]
+
+
+cat("Mean Rating of lower ABV beers: ",mean(lowerABV$Rating, na.rm = TRUE))
+cat("Mean Rating of higher ABV beers: ",mean(higherABV$Rating, na.rm = TRUE))
+```
+
+```{r}
+
+```
+
+***
+###8)
+The ABV of "Imperial" beers has a much higher mean than those that are not "Imperial" and they are **9.34** and **8.074** respectively. In addition, the standard deviation of "Imperial" beers is smaller and therefore the ABV is much more centered around its mean while those that are not "Imperial" have a greater variance.
+```{r}
+
+#Creating a logical vector which is TRUE if the style contains "Imperial" and FALSE otherwise
+is_imperial <- grepl("Imperial", beer.data$Style)
+
+#Statistical comparison of beers that are and aren't "Imperial"
+cat("Mean of Imperial beers:", mean(beer.data$ABV[is_imperial], na.rm = TRUE))
+cat("Mean of non-Imperial beers:", mean(beer.data$ABV[!is_imperial], na.rm = TRUE))
+
+cat("SD of Imperial beers:",sd(beer.data$ABV[is_imperial], na.rm = TRUE))
+cat("SD of non-Imperial beers:",sd(beer.data$ABV[!is_imperial], na.rm = TRUE))
+```
+
+
+
+***
+###9)
+
+####Method1: 
+
+Creating five collections of worst to best beers based on the average rating of the specific **Style** of beer. Collections are then produce based on the number of pos/neg standard deviations from the mean.
+
+```{r}
+hist(beer.data$Rating,
+     main = "Number of Reviews per Rating",
+     xlab = "Rating",
+     col = "steelblue",
+     n = 50)
+
+```
+
+#####Code solution below
+```{r Method1}
+
+#Grabbing all the styles as a vector of strings
+styles <- levels(as.factor(beer.data$Style))
+
+#creating empty vector which will eventually hold the average of each style
+style_avg <- rep(0, length(styles))
+
+for(i in 1:length(styles)){
+  
+  #Computing avg based on style
+  style_avg[i] <- mean(beer.data$Rating[beer.data$Style == styles[i]],
+                       na.rm = TRUE)
+}
+
+#Naming each avg value their respective style name
+names(style_avg) <- styles
+style_avg
+
+#Computing total mean and sd
+tot_avg <- mean(style_avg)
+tot_sd <- sd(style_avg)
+
+#Creating empty collection vectors
+collection1 <- NA
+collection2 <- NA
+collection3 <- NA
+collection4 <- NA
+collection5 <- NA
+
+
+#Adding each style to collection based on avg rating value and number of SDs from mean
+for(i in 1:length(style_avg)){
+  if(style_avg[i] < tot_avg){
+    
+    if(style_avg[i] < (tot_avg - tot_sd))
+      collection1 <- c(collection1, names(style_avg)[i])
+    
+    else
+      collection2 <- c(collection2, names(style_avg)[i])
+  }
+    
+  else{
+    if(style_avg[i] > tot_avg + (2 * tot_sd))
+      collection5 <- c(collection5, names(style_avg)[i])
+    
+    else if(style_avg[i] > tot_avg + tot_sd)
+      collection4 <- c(collection4, names(style_avg)[i])
+    
+    else
+      collection3 <- c(collection3, names(style_avg)[i])
+  }
+}
+
+#Removing initial NA value used to create the collections
+collection1 <- collection1[-1]
+collection2 <- collection2[-1]
+collection3 <- collection3[-1]
+collection4 <- collection4[-1]
+collection5 <- collection5[-1]
+
+#Printing collections
+cat("Collection1: ",collection1, sep = "; ")
+cat("Collection2: ",collection2, sep = "; ")
+cat("Collection3: ",collection3, sep = "; ")
+cat("Collection4: ",collection4, sep = "; ")
+cat("Collection5: ",collection5, sep = "; ")
+
+```
+
+
+***
+####Method2:
+
+Creating five collections of worst to best beers based on the average length of the review of the beer based on its style Collections are then produce based on the number of pos/neg standard deviations from the mean.
+
+```{r reviewPlot, echo = FALSE}
+hist(nchar(as.character(beer.data$Review)),
+     main = "Comparing Length of Beer Reviews",
+     xlab = "Length of review",
+     n = 100,
+     col = "steelblue")
+```
+
+
+#####Code solution for method 2.
+```{r}
+
+#Grabbing all the styles as a vector of strings
+styles <- levels(as.factor(beer.data$Style))
+
+#creating empty vector which will eventually hold the average of each style
+style_avg <- rep(0, length(styles))
+
+for(i in 1:length(styles)){
+  
+  #Computing avg based on style
+  style_avg[i] <- mean(nchar(as.character(beer.data$Review[beer.data$Style == styles[i]])))
+}
+
+#Naming each avg value their respective style name
+names(style_avg) <- styles
+style_avg
+
+#Computing total mean and sd
+tot_avg <- mean(style_avg)
+tot_sd <- sd(style_avg)
+
+#Creating empty collection vectors
+collection1b <- NA
+collection2b <- NA
+collection3b <- NA
+collection4b <- NA
+collection5b <- NA
+
+
+#Adding each style to collection based on avg rating value and number of SDs from mean
+for(i in 1:length(style_avg)){
+  if(style_avg[i] < tot_avg){
+    
+    if(style_avg[i] < (tot_avg - tot_sd))
+      collection1b <- c(collection1b, names(style_avg)[i])
+    
+    else
+      collection2b <- c(collection2b, names(style_avg)[i])
+  }
+    
+  else{
+    if(style_avg[i] > tot_avg + (2 * tot_sd))
+      collection5b <- c(collection5b, names(style_avg)[i])
+    
+    else if(style_avg[i] > tot_avg + tot_sd)
+      collection4b <- c(collection4b, names(style_avg)[i])
+    
+    else
+      collection3b <- c(collection3b, names(style_avg)[i])
+  }
+}
+
+#Removing initial NA value used to create the collections
+collection1b <- collection1b[-1]
+collection2b <- collection2b[-1]
+collection3b <- collection3b[-1]
+collection4b <- collection4b[-1]
+collection5b <- collection5b[-1]
+
+#Printing collections
+cat("Collection1: ",collection1b, sep = "; ")
+cat("Collection2: ",collection2b, sep = "; ")
+cat("Collection3: ",collection3b, sep = "; ")
+cat("Collection4: ",collection4b, sep = "; ")
+cat("Collection5: ",collection5b, sep = "; ")
+```
+
+***
+####Interesting Discovery:
+Printing out beers that are within the same collection for both methods. Its interesting to see that we collected similar beer styles based on length of the review and the rating seperately. Below is also a plot analyzing the relationship between rating and review length.
+```{r}
+
+#Order is based on which collection is larger as to not miss any styles when comparing
+cat("Both in Collection 1: ", collection1[collection1 %in% collection1b])
+
+cat("Both in Collection 2: ", collection2b[collection2b %in% collection2], sep = "; ")
+
+cat("Both in Collection 3: ", collection3b[collection3b %in% collection3], sep = "; ")
+
+#Skipping collection4 and collection4b because the latter is empty
+
+cat("Both in Collection 5: ", collection5[collection5b %in% collection5])
+```
+
+Based on the plot below you can see that as the rating increases, the review length tends to increase as well.
+```{r correlationPlot, echo = FALSE}
+plot(beer.data$Rating, nchar(as.character(beer.data$Review)),
+     col = "purple",
+     xlab = "Rating",
+     ylab = "Review Length",
+     main = "Review Length vs Rating Score of Beer Reviews")
+
+```
+
+
+
+***
+###10)
+
+Pliny the Younger on average has longer review entries at **191.826** characters than Pliny the Elder at **176.007** characters.
+
+In addition, Pliny the Younger has a higher mean rating at **4.695** and a smaller standard deviation at **0.303** than Pliny the Elder at **4.599** and **0.336** respectively, statistically showing that Pliny the Younger is the better beer among the two.
+```{r}
+#Creating subsets for "Pliny The Younger" and "Pliny The Elder"
+pty <- beer.data[which(beer.data$Name == "Pliny The Younger"),]
+pte <- beer.data[which(beer.data$Name == "Pliny The Elder"),]
+
+#Gathering the stats
+pty.mean.review <- mean(nchar(as.character(pty$Review)))
+pte.mean.review <- mean(nchar(as.character(pte$Review)))
+
+pty.mean.rating <- mean(pty$Rating, na.rm = TRUE)
+pty.sd.rating <- sd(pty$Rating, na.rm = TRUE)
+
+pte.mean.rating <- mean(pte$Rating, na.rm = TRUE)
+pte.sd.rating <- sd(pte$Rating, na.rm = TRUE)
+
+
+```
+
+
